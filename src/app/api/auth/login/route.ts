@@ -13,8 +13,12 @@ const UserSchema = z.object({
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('Login request body:', await request.json()) // Логируем тело запроса
-		const { email, password } = UserSchema.parse(await request.json())
+		// Читаем тело запроса один раз
+		const body = await request.json()
+		console.log('Login request body:', body)
+
+		// Парсим тело с помощью Zod
+		const { email, password } = UserSchema.parse(body)
 		console.log('Parsed email:', email)
 
 		const existingUser = await prisma.user.findUnique({ where: { email } })
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
 
 		await prisma.user.update({
 			where: { id: existingUser.id },
-			data: { accessToken: accessToken, refreshToken: refreshToken },
+			data: { accessToken, refreshToken },
 		})
 
 		return NextResponse.json(
@@ -65,15 +69,15 @@ export async function POST(request: NextRequest) {
 					name: existingUser.name,
 					shopId: existingUser.shopId,
 				},
-				accessToken: accessToken,
-				refreshToken: refreshToken,
+				accessToken,
+				refreshToken,
 			},
 			{ status: 200 }
 		)
 	} catch (error) {
-		console.error('Error logging in user:', error) // Подробный лог ошибки
+		console.error('Error logging in user:', error)
 		return NextResponse.json(
-			{ error: 'Failed to login user', details: error },
+			{ error: 'Failed to login user', details: error.message },
 			{ status: 500 }
 		)
 	} finally {
