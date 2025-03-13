@@ -13,9 +13,12 @@ const UserSchema = z.object({
 
 export async function POST(request: NextRequest) {
 	try {
+		console.log('Login request body:', await request.json()) // Логируем тело запроса
 		const { email, password } = UserSchema.parse(await request.json())
+		console.log('Parsed email:', email)
 
 		const existingUser = await prisma.user.findUnique({ where: { email } })
+		console.log('Found user:', existingUser)
 		if (!existingUser) {
 			return NextResponse.json(
 				{ error: 'User does not exist' },
@@ -23,10 +26,12 @@ export async function POST(request: NextRequest) {
 			)
 		}
 
+		console.log('User password from DB:', existingUser.password)
 		const isPasswordValid = await bcrypt.compare(
 			password,
 			existingUser.password
 		)
+		console.log('Password valid:', isPasswordValid)
 		if (!isPasswordValid) {
 			return NextResponse.json(
 				{ error: 'Invalid email or password' },
@@ -39,12 +44,13 @@ export async function POST(request: NextRequest) {
 			process.env.JWT_SECRET!,
 			{ expiresIn: '15m' }
 		)
-
 		const refreshToken = jwt.sign(
 			{ userId: existingUser.id },
 			process.env.JWT_SECRET!,
 			{ expiresIn: '7d' }
 		)
+
+		console.log('Generated tokens:', { accessToken, refreshToken })
 
 		await prisma.user.update({
 			where: { id: existingUser.id },
@@ -57,7 +63,7 @@ export async function POST(request: NextRequest) {
 					id: existingUser.id,
 					email: existingUser.email,
 					name: existingUser.name,
-					shopId: existingUser.shopId, // Добавляем shopId в ответ
+					shopId: existingUser.shopId,
 				},
 				accessToken: accessToken,
 				refreshToken: refreshToken,
@@ -65,8 +71,11 @@ export async function POST(request: NextRequest) {
 			{ status: 200 }
 		)
 	} catch (error) {
-		console.error('Error logging in user:', error)
-		return NextResponse.json({ error: 'Failed to login user' }, { status: 500 })
+		console.error('Error logging in user:', error) // Подробный лог ошибки
+		return NextResponse.json(
+			{ error: 'Failed to login user', details: error },
+			{ status: 500 }
+		)
 	} finally {
 		await prisma.$disconnect()
 	}
