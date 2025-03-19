@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+if (!supabaseUrl || !supabaseKey) {
+	throw new Error('Missing Supabase environment variables')
+}
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(request: NextRequest) {
@@ -18,7 +21,8 @@ export async function POST(request: NextRequest) {
 
 		for (const file of files) {
 			const fileName = `${Date.now()}-${file.name}`
-			const fileBuffer = Buffer.from(await file.arrayBuffer())
+			const arrayBuffer = await file.arrayBuffer()
+			const fileBuffer = new Uint8Array(arrayBuffer)
 
 			const { error: uploadError } = await supabase.storage
 				.from('product-images')
@@ -36,7 +40,10 @@ export async function POST(request: NextRequest) {
 			const { data } = supabase.storage
 				.from('product-images')
 				.getPublicUrl(fileName)
-			uploadedUrls.push(data.publicUrl) // Возвращаем чистый URL
+			if (!data.publicUrl) {
+				throw new Error('Failed to generate public URL')
+			}
+			uploadedUrls.push(data.publicUrl)
 		}
 
 		return NextResponse.json({ urls: uploadedUrls }, { status: 200 })
