@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 export async function POST(request: NextRequest) {
 	try {
 		const formData = await request.formData()
-		const files = formData.getAll('file') as File[] // Поддержка нескольких файлов
+		const files = formData.getAll('file') as File[]
 
 		if (!files || files.length === 0) {
 			return NextResponse.json({ error: 'No files uploaded' }, { status: 400 })
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 			const fileBuffer = Buffer.from(await file.arrayBuffer())
 
 			const { error: uploadError } = await supabase.storage
-				.from('product-images') // Имя bucket
+				.from('product-images')
 				.upload(fileName, fileBuffer, {
 					contentType: file.type,
 					cacheControl: '3600',
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 			const { data } = supabase.storage
 				.from('product-images')
 				.getPublicUrl(fileName)
-			uploadedUrls.push(data.publicUrl)
+			uploadedUrls.push(data.publicUrl) // Возвращаем чистый URL
 		}
 
 		return NextResponse.json({ urls: uploadedUrls }, { status: 200 })

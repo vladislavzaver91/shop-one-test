@@ -97,13 +97,8 @@ const CreateProductForm = ({
 	useEffect(() => {
 		if (editingProduct) {
 			Object.keys(editingProduct).forEach(key => {
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
-				setValue(key, editingProduct[key])
+				setValue(key as keyof Product, editingProduct[key as keyof Product])
 			})
-			setSelectedFiles(
-				editingProduct.images.map((img: string) => new File([img], img))
-			)
 			setPreviews(editingProduct.images)
 			setAttributes(editingProduct.attributes || [])
 			setValue('attributes', editingProduct.attributes || [])
@@ -114,8 +109,7 @@ const CreateProductForm = ({
 				}
 			}
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [editingProduct, setValue, setCategories, setCategoryInput])
+	}, [editingProduct, setValue, setCategories, setCategoryInput, categories])
 
 	const addAttribute = () => {
 		setAttributes(prev => [...prev, ''])
@@ -148,7 +142,6 @@ const CreateProductForm = ({
 					},
 					body: JSON.stringify(productToSave),
 				})
-
 				if (!res.ok) throw new Error('Failed to update product')
 			} else {
 				const res = await fetch('/api/products', {
@@ -156,7 +149,6 @@ const CreateProductForm = ({
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(productToSave),
 				})
-
 				if (!res.ok) throw new Error('Failed to create product')
 			}
 
@@ -197,7 +189,6 @@ const CreateProductForm = ({
 			setValue('images', [...watch('images'), ...urls])
 		} catch (error) {
 			console.error('Error uploading files:', error)
-			// Удаляет превью, если загрузка не удалась
 			setPreviews(prev => prev.slice(0, prev.length - filesArray.length))
 		}
 	}
