@@ -35,9 +35,7 @@ const ProductList = ({
 				{currentProducts.map((product, index) => {
 					const imageSrc =
 						product.images.length > 0 ? product.images[0] : '/placeholder.jpg'
-					const imageUrl = imageSrc.startsWith('/')
-						? imageSrc
-						: `/uploads/${imageSrc}`
+					const imageUrl = imageSrc.startsWith('/') ? imageSrc : `${imageSrc}`
 					return (
 						<motion.div
 							key={product.id}
