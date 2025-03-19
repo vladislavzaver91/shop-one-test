@@ -41,30 +41,32 @@ export default function CheckoutPage() {
 		}
 
 		const productIds = cart.map(product => product.id)
-		const deliveryAddress = shippingData
-		const deliveryAddressId = localStorage.getItem('deliveryAddressId')
+		const deliveryAddressId =
+			localStorage.getItem('deliveryAddressId') || crypto.randomUUID()
 		const cartItems = cart.map(product => ({
 			id: product.id,
 			quantity: product.quantity,
 			selectedColor: product.selectedColor || '',
+			title: product.title,
+			price: product.price,
 		}))
 
-		console.log('deliveryAddress:', deliveryAddress)
 		console.log('deliveryAddressId:', deliveryAddressId)
 
 		const newOrder = {
-			userId: userId,
-			productIds: productIds,
+			userId,
+			productIds,
 			cartItems,
 			status: 'Pending',
-			createAt: new Date().toISOString(),
-			updateAt: new Date().toISOString(),
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
 			deliveryAddressId,
 		}
 
 		console.log(newOrder)
 
 		try {
+			// 1. Создание заказа в магазине
 			const storeResponse = await fetch('/api/order', {
 				method: 'POST',
 				headers: {
@@ -75,37 +77,80 @@ export default function CheckoutPage() {
 			})
 
 			if (!storeResponse.ok) {
-				throw new Error('Failed to create order in store')
+				throw new Error(
+					`Failed to create order in store: ${storeResponse.status}`
+				)
 			}
 
 			const storeOrder = await storeResponse.json()
+
+			// 2. Создание адреса в crm-shop-backend
+			const crmAddressResponse = await fetch(
+				'http://localhost:4444/api/addresses',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						id: deliveryAddressId,
+						shopId,
+						name: shippingData.name || 'Unknown',
+						address: shippingData.address || 'Unknown',
+						city: shippingData.city || 'Unknown',
+						postalCode: shippingData.postalCode || 'Unknown',
+						country: shippingData.country || 'Unknown',
+						isDefault: shippingData.isDefault || false,
+					}),
+				}
+			)
+
+			if (!crmAddressResponse.ok) {
+				throw new Error(
+					`Failed to create address in CRM: ${await crmAddressResponse.text()}`
+				)
+			}
+
+			// 3. Создание заказа в crm-shop-backend
+			const crmOrderData = {
+				storeOrderId: storeOrder.id, // Сохраняем ID заказа из магазина
+				shopId,
+				completedAt: null,
+				deviceName: 'Web',
+				totalPrice: cart.reduce(
+					(sum, item) => sum + item.price * item.quantity,
+					0
+				),
+				productQuantityOrdered: cart.reduce(
+					(sum, item) => sum + item.quantity,
+					0
+				),
+				productQuantityDelivered: 0,
+				orderItems: cartItems.map(item => ({
+					productId: item.id,
+					productName: item.title,
+					quantity: item.quantity,
+					selectedColor: item.selectedColor,
+					price: item.price,
+				})),
+				paymentType: 'card',
+				deliveryAddressId,
+				createdAt: newOrder.createdAt,
+				updatedAt: newOrder.updatedAt,
+			}
 
 			const crmResponse = await fetch('http://localhost:4444/api/orders', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					shopId: shopId,
-					completedAt: null,
-					deviceName: 'Web',
-					totalPrice: cart.reduce(
-						(sum, item) => sum + item.price * item.quantity,
-						0
-					),
-					productQuantityOrdered: cart.reduce(
-						(sum, item) => sum + item.quantity,
-						0
-					),
-					productQuantityDelivered: 0,
-					productName: cart.map(item => item.title).join(', '),
-					paymentType: 'card',
-					deliveryAddressId: storeOrder.deliveryAddressId || deliveryAddressId,
-				}),
+				body: JSON.stringify(crmOrderData),
 			})
 
 			if (!crmResponse.ok) {
-				throw new Error('Failed to send order to CRM')
+				throw new Error(
+					`Failed to send order to CRM: ${await crmResponse.text()}`
+				)
 			}
 
 			console.log('Order created and sent to CRM!')
