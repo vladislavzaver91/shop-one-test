@@ -125,9 +125,11 @@ const CreateProductForm = ({
 
 	const onSubmit = async (data: any) => {
 		setValue('attributes', attributes)
+		const currentImages = watch('images') // Получаем текущие изображения из формы
 		const productToSave = {
 			...data,
 			attributes,
+			images: currentImages, // Явно добавляем images
 			id: editingProduct ? editingProduct.id : `product-${Date.now()}`,
 			createdAt: editingProduct ? editingProduct.createdAt : new Date(),
 			updatedAt: new Date(),

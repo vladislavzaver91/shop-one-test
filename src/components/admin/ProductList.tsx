@@ -33,9 +33,9 @@ const ProductList = ({
 		<>
 			<div className='grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'>
 				{currentProducts.map((product, index) => {
+					console.log(`Product ${product.id} images:`, product.images) // Логирование для отладки
 					const imageSrc =
 						product.images.length > 0 ? product.images[0] : '/placeholder.jpg'
-					const imageUrl = imageSrc.startsWith('/') ? imageSrc : `${imageSrc}`
 					return (
 						<motion.div
 							key={product.id}
@@ -58,7 +58,7 @@ const ProductList = ({
 								</div>
 								<div className='relative w-16 h-20'>
 									<Image
-										src={imageUrl}
+										src={imageSrc}
 										alt={product.title}
 										fill
 										className='w-full h-full object-contain object-center rounded-xl'
