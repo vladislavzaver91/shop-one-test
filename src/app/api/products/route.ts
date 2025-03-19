@@ -1,18 +1,21 @@
-import { PrismaClient } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
 	try {
 		const data = await request.json()
+		console.log('Received data:', data) // Логируем входящие данные
+
 		const product = await prisma.product.create({
 			data: {
 				...data,
 				attributes: data.attributes || [],
 			},
 		})
-		console.log('Product created:', product)
+		console.log('Product created:', product) // Логируем сохранённый продукт
+
 		return NextResponse.json(product, { status: 201 })
 	} catch (error) {
 		console.error('Error creating product:', error)
