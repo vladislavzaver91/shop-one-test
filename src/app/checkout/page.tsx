@@ -16,7 +16,7 @@ const ShippingForm = dynamic(
 export default function CheckoutPage() {
 	const [step, setStep] = useState(1)
 	const [shippingData, setShippingData] = useState<Address | null>(null)
-	const { cart } = useCart()
+	const { cart, clearCart } = useCart()
 	const router = useRouter()
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,6 +28,7 @@ export default function CheckoutPage() {
 	const handleCompleteOrder = async () => {
 		if (!shippingData || cart.length === 0) {
 			console.log('Please, fill in all details.')
+			router.push('/checkout/cancel')
 			return
 		}
 
@@ -35,6 +36,7 @@ export default function CheckoutPage() {
 		const shopId = localStorage.getItem('shopId')
 		if (!userId || !shopId) {
 			console.log('User ID or Shop ID not found')
+			router.push('/checkout/cancel')
 			return
 		}
 
@@ -98,7 +100,7 @@ export default function CheckoutPage() {
 					productQuantityDelivered: 0,
 					productName: cart.map(item => item.title).join(', '),
 					paymentType: 'card',
-					deliveryAddressId: storeOrder.deliveryAddressId,
+					deliveryAddressId: storeOrder.deliveryAddressId || deliveryAddressId,
 				}),
 			})
 
@@ -107,10 +109,12 @@ export default function CheckoutPage() {
 			}
 
 			console.log('Order created and sent to CRM!')
+			clearCart()
 			setShippingData(null)
 			router.push('/checkout/success')
 		} catch (error) {
 			console.error('Error completing order:', error)
+			router.push('/checkout/cancel')
 		}
 	}
 

@@ -1,28 +1,45 @@
-import { mkdir, writeFile } from 'fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
-import path from 'path'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(request: NextRequest) {
 	try {
 		const formData = await request.formData()
-		const file = formData.get('file') as File
+		const files = formData.getAll('file') as File[] // Поддержка нескольких файлов
 
-		if (!file) {
-			return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
+		if (!files || files.length === 0) {
+			return NextResponse.json({ error: 'No files uploaded' }, { status: 400 })
 		}
 
-		const bytes = await file.arrayBuffer()
-		const buffer = Buffer.from(bytes)
-		const uploadDir = path.join(process.cwd(), 'public/uploads')
+		const uploadedUrls: string[] = []
 
-		await mkdir(uploadDir, { recursive: true })
+		for (const file of files) {
+			const fileName = `${Date.now()}-${file.name}`
+			const fileBuffer = Buffer.from(await file.arrayBuffer())
 
-		const filename = `${Date.now()}-${file.name}`
-		const filepath = path.join(uploadDir, filename)
+			const { error: uploadError } = await supabase.storage
+				.from('product-images') // Имя bucket
+				.upload(fileName, fileBuffer, {
+					contentType: file.type,
+					cacheControl: '3600',
+					upsert: false,
+				})
 
-		await writeFile(filepath, buffer)
+			if (uploadError) {
+				throw new Error(`Upload failed: ${uploadError.message}`)
+			}
 
-		return NextResponse.json({ url: `/uploads/${filename}` })
+			// Получение публичного URL
+			const { data } = supabase.storage
+				.from('product-images')
+				.getPublicUrl(fileName)
+			uploadedUrls.push(data.publicUrl)
+		}
+
+		return NextResponse.json({ urls: uploadedUrls }, { status: 200 })
 	} catch (error) {
 		console.error('Error uploading file:', error)
 		return NextResponse.json({ error: 'File upload failed' }, { status: 500 })

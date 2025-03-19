@@ -163,6 +163,8 @@ const CreateProductForm = ({
 			onCreate(productToSave)
 			reset()
 			setAttributes([])
+			setSelectedFiles([])
+			setPreviews([])
 		} catch (error) {
 			console.error('Error submitting form:', error)
 		}
@@ -179,7 +181,7 @@ const CreateProductForm = ({
 		setPreviews(prev => [...prev, ...previewUrls])
 
 		const formData = new FormData()
-		Array.from(files).forEach(file => formData.append('file', file))
+		filesArray.forEach(file => formData.append('file', file))
 
 		try {
 			const res = await fetch('/api/products/upload', {
@@ -187,18 +189,26 @@ const CreateProductForm = ({
 				body: formData,
 			})
 
-			if (!res.ok) throw new Error('File upload failed')
+			if (!res.ok) {
+				throw new Error(`File upload failed with status: ${res.status}`)
+			}
 
-			const { url } = await res.json()
-			setValue('images', [...watch('images'), url])
+			const { urls } = await res.json()
+			setValue('images', [...watch('images'), ...urls])
 		} catch (error) {
-			console.error('Error uploading file:', error)
+			console.error('Error uploading files:', error)
+			// Удаляет превью, если загрузка не удалась
+			setPreviews(prev => prev.slice(0, prev.length - filesArray.length))
 		}
 	}
 
 	const handleRemoveImage = (index: number) => {
 		setSelectedFiles(prev => prev.filter((_, i) => i !== index))
 		setPreviews(prev => prev.filter((_, i) => i !== index))
+		setValue(
+			'images',
+			watch('images').filter((_, i) => i !== index)
+		)
 	}
 
 	return (
